@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Acceso al Sistema</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg,#4facfe,#00f2fe);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            width: 340px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #2d7dfc;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h2>Iniciar Sesión</h2>
+        <input type="text" id="usuario" placeholder="Usuario">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button onclick="login()">Entrar</button>
+    </div>
+
+    <script>
+        const API_URL = "http://redmovimientossociales.somee.com/api";
+
+        async function login() {
+            const usuario = document.getElementById("usuario").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            if (!usuario || !password) {
+                alert("Completa todos los campos");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/Auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ usuario, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem("usuario", JSON.stringify(data));
+
+                    if ((data.rol || "").toLowerCase() === "admin") {
+                        window.location.href = "admin.html";
+                    } else {
+                        window.location.href = "panel.html";
+                    }
+                } else {
+                    alert(data.mensaje || "Usuario o contraseña incorrectos");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error al conectar con la API");
+            }
+        }
+    </script>
+
+</body>
+</html>

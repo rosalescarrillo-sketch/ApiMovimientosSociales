@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Red de Apoyo de Movimientos Sociales</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg,#4facfe,#00f2fe);
+            min-height: 100vh;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .info {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+            gap: 12px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            background: #4facfe;
+            color: white;
+        }
+
+            button:hover {
+                background: #2d7dfc;
+            }
+
+            button.danger {
+                background: #e74c3c;
+            }
+
+                button.danger:hover {
+                    background: #c0392b;
+                }
+
+            button.secondary {
+                background: #6c757d;
+            }
+
+                button.secondary:hover {
+                    background: #555d66;
+                }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+        }
+
+        th, td {
+            border-bottom: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background: #4facfe;
+            color: white;
+        }
+
+        .msg {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+            .msg.ok {
+                color: green;
+            }
+
+            .msg.error {
+                color: #c0392b;
+            }
+
+        .readonly {
+            background: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="topbar">
+            <div class="info" id="infoUsuario">Cargando...</div>
+            <div>
+                <button class="secondary" onclick="cargarRegistros()">Actualizar</button>
+                <button class="danger" onclick="cerrarSesion()">Cerrar sesión</button>
+            </div>
+        </div>
+
+        <h1>Red de Apoyo Movimientos Sociales</h1>
+
+        <div class="card">
+            <h2 id="tituloFormulario">Agregar persona</h2>
+
+            <div class="grid">
+                <input type="hidden" id="registroId">
+
+                <input type="text" id="nombres" placeholder="Nombres">
+                <input type="text" id="apellidos" placeholder="Apellidos">
+                <input type="text" id="dui" placeholder="DUI">
+                <input type="text" id="telefono" placeholder="Teléfono">
+                <input type="text" id="cargo" placeholder="Cargo">
+                <input type="text" id="comunidad" placeholder="Comunidad">
+                <input type="text" id="departamento" placeholder="Departamento">
+                <input type="text" id="distrito" placeholder="Distrito">
+            </div>
+
+            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button onclick="guardarRegistro()">Guardar</button>
+                <button class="secondary" onclick="limpiarFormulario()">Limpiar</button>
+            </div>
+
+            <div id="mensaje" class="msg"></div>
+        </div>
+
+        <div class="card">
+            <h2>Listado</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombres</th>
+                        <th>Apellidos</th>
+                        <th>DUI</th>
+                        <th>Teléfono</th>
+                        <th>Cargo</th>
+                        <th>Comunidad</th>
+                        <th>Departamento</th>
+                        <th>Distrito</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaRegistros"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://redmovimientossociales.somee.com/api";
+        let sesion = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            validarSesion();
+            fijarUbicacion();
+            cargarRegistros();
+        });
+
+        function validarSesion() {
+            sesion = JSON.parse(localStorage.getItem("usuario"));
+
+            if (!sesion) {
+                alert("Debes iniciar sesión");
+                window.location.href = "login.html";
+                return;
+            }
+
+            document.getElementById("infoUsuario").textContent =
+                `Usuario: ${sesion.usuario} | Rol: ${sesion.rol} | Departamento: ${sesion.departamento || "-"} | Distrito: ${sesion.distrito || "-"}`;
+        }
+
+        function fijarUbicacion() {
+            const dep = document.getElementById("departamento");
+            const dis = document.getElementById("distrito");
+
+            dep.readOnly = false;
+            dis.readOnly = false;
+            dep.classList.remove("readonly");
+            dis.classList.remove("readonly");
+
+            if ((sesion.rol || "").toLowerCase() === "departamental") {
+                dep.value = sesion.departamento || "";
+                dep.readOnly = true;
+                dep.classList.add("readonly");
+                dis.value = "";
+            }
+            else if ((sesion.rol || "").toLowerCase() === "distrital") {
+                dep.value = sesion.departamento || "";
+                dis.value = sesion.distrito || "";
+                dep.readOnly = true;
+                dis.readOnly = true;
+                dep.classList.add("readonly");
+                dis.classList.add("readonly");
+            }
+        }
+
+        async function cargarRegistros() {
+            const tabla = document.getElementById("tablaRegistros");
+            tabla.innerHTML = "<tr><td colspan='10'>Cargando...</td></tr>";
+
+            try {
+                let url = `${API_URL}/Registros/listar`;
+
+                if ((sesion.rol || "").toLowerCase() === "departamental") {
+                    url += `?rol=departamental&departamento=${encodeURIComponent(sesion.departamento || "")}`;
+                }
+                else if ((sesion.rol || "").toLowerCase() === "distrital") {
+                    url += `?rol=distrital&distrito=${encodeURIComponent(sesion.distrito || "")}`;
+                }
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    tabla.innerHTML = "<tr><td colspan='10'>Error al cargar registros</td></tr>";
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!data.length) {
+                    tabla.innerHTML = "<tr><td colspan='10'>No hay registros</td></tr>";
+                    return;
+                }
+
+                tabla.innerHTML = "";
+
+                data.forEach(r => {
+                    tabla.innerHTML += `
+                    <tr>
+                        <td>${r.id}</td>
+                        <td>${r.nombres}</td>
+                        <td>${r.apellidos}</td>
+                        <td>${r.dui}</td>
+                        <td>${r.telefono || ""}</td>
+                        <td>${r.cargo || ""}</td>
+                        <td>${r.comunidad || ""}</td>
+                        <td>${r.departamento || ""}</td>
+                        <td>${r.distrito || ""}</td>
+                        <td>
+                            <button onclick='editarRegistro(${JSON.stringify(r).replace(/'/g, "&apos;")})'>Editar</button>
+                            <button class="danger" onclick="eliminarRegistro(${r.id})">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+                });
+
+            } catch (error) {
+                console.error(error);
+                tabla.innerHTML = "<tr><td colspan='10'>Error al conectar con la API</td></tr>";
+            }
+        }
+
+        async function guardarRegistro() {
+            const id = document.getElementById("registroId").value;
+            const mensaje = document.getElementById("mensaje");
+
+            const data = {
+                nombres: document.getElementById("nombres").value.trim(),
+                apellidos: document.getElementById("apellidos").value.trim(),
+                dui: document.getElementById("dui").value.trim(),
+                telefono: document.getElementById("telefono").value.trim(),
+                cargo: document.getElementById("cargo").value.trim(),
+                comunidad: document.getElementById("comunidad").value.trim(),
+                departamento: document.getElementById("departamento").value.trim(),
+                distrito: document.getElementById("distrito").value.trim()
+            };
+
+            mensaje.textContent = "";
+            mensaje.className = "msg";
+
+            if (!data.nombres || !data.apellidos || !data.dui || !data.departamento || !data.distrito) {
+                mensaje.textContent = "Completa nombres, apellidos, DUI, departamento y distrito.";
+                mensaje.classList.add("error");
+                return;
+            }
+
+            if ((sesion.rol || "").toLowerCase() === "departamental") {
+                data.departamento = sesion.departamento || "";
+            }
+
+            if ((sesion.rol || "").toLowerCase() === "distrital") {
+                data.departamento = sesion.departamento || "";
+                data.distrito = sesion.distrito || "";
+            }
+
+            try {
+                let response;
+
+                if (id) {
+                    response = await fetch(`${API_URL}/Registros/editar/${id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    response = await fetch(`${API_URL}/Registros/crear`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    mensaje.textContent = result.mensaje || "Operación realizada correctamente";
+                    mensaje.classList.add("ok");
+                    limpiarFormulario();
+                    cargarRegistros();
+                } else {
+                    mensaje.textContent = result.mensaje || "No se pudo guardar";
+                    mensaje.classList.add("error");
+                }
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = "Error al conectar con la API";
+                mensaje.classList.add("error");
+            }
+        }
+
+        function editarRegistro(r) {
+            document.getElementById("registroId").value = r.id || "";
+            document.getElementById("nombres").value = r.nombres || "";
+            document.getElementById("apellidos").value = r.apellidos || "";
+            document.getElementById("dui").value = r.dui || "";
+            document.getElementById("telefono").value = r.telefono || "";
+            document.getElementById("cargo").value = r.cargo || "";
+            document.getElementById("comunidad").value = r.comunidad || "";
+            document.getElementById("departamento").value = r.departamento || "";
+            document.getElementById("distrito").value = r.distrito || "";
+
+            document.getElementById("tituloFormulario").textContent = "Editar persona";
+
+            if ((sesion.rol || "").toLowerCase() === "departamental") {
+                document.getElementById("departamento").value = sesion.departamento || "";
+            }
+
+            if ((sesion.rol || "").toLowerCase() === "distrital") {
+                document.getElementById("departamento").value = sesion.departamento || "";
+                document.getElementById("distrito").value = sesion.distrito || "";
+            }
+
+            fijarUbicacion();
+        }
+
+        async function eliminarRegistro(id) {
+            if (!confirm("¿Seguro que deseas eliminar este registro?")) return;
+
+            try {
+                const response = await fetch(`${API_URL}/Registros/eliminar/${id}`, {
+                    method: "DELETE"
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.mensaje || "Registro eliminado correctamente");
+                    cargarRegistros();
+                } else {
+                    alert(result.mensaje || "No se pudo eliminar");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error al conectar con la API");
+            }
+        }
+
+        function limpiarFormulario() {
+            document.getElementById("registroId").value = "";
+            document.getElementById("nombres").value = "";
+            document.getElementById("apellidos").value = "";
+            document.getElementById("dui").value = "";
+            document.getElementById("telefono").value = "";
+            document.getElementById("cargo").value = "";
+            document.getElementById("comunidad").value = "";
+            document.getElementById("tituloFormulario").textContent = "Agregar persona";
+
+            if ((sesion.rol || "").toLowerCase() === "admin") {
+                document.getElementById("departamento").value = "";
+                document.getElementById("distrito").value = "";
+            } else {
+                fijarUbicacion();
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.removeItem("usuario");
+            window.location.href = "index.html";
+        }
+    </script>
+
+</body>
+</html>

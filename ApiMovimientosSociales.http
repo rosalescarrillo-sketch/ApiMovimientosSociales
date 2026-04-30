@@ -1,0 +1,6 @@
+@ApiMovimientosSociales_HostAddress = http://localhost:5011
+
+GET {{ApiMovimientosSociales_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
