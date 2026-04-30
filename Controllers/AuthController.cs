@@ -23,7 +23,7 @@ namespace ApiMovimientosSociales.Controllers
                 conn.Open();
 
                 string query = @"SELECT TOP 1 id, usuario, password, rol, departamento, distrito
-                                 FROM usuarios
+                                 FROM Usuarios
                                  WHERE usuario = @usuario AND password = @password";
 
                 using SqlCommand cmd = new SqlCommand(query, conn);
