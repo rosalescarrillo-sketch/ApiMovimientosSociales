@@ -20,16 +20,8 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
         }
 
         .topbar {
@@ -47,11 +39,58 @@
             font-weight: bold;
         }
 
+        .card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
             gap: 12px;
         }
+
+        .dept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .dept-card {
+            background: #f7f9fc;
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.2s;
+        }
+
+            .dept-card:hover {
+                transform: translateY(-3px);
+                border-color: #4facfe;
+                box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            }
+
+            .dept-card.active {
+                border-color: #2d7dfc;
+                background: #e9f3ff;
+            }
+
+            .dept-card h3 {
+                margin: 0;
+                color: #333;
+            }
+
+            .dept-card p {
+                margin: 8px 0 0;
+                font-weight: bold;
+                color: #4facfe;
+            }
 
         input, select {
             width: 100%;
@@ -123,22 +162,48 @@
             .msg.error {
                 color: #c0392b;
             }
+
+        .titulo-seccion {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .contador {
+            font-weight: bold;
+            color: #2d7dfc;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
+
         <div class="topbar">
             <div class="info" id="infoAdmin">Panel de administración</div>
             <div>
                 <button onclick="abrirDashboard()">Dashboard</button>
                 <button onclick="exportarExcel()">Exportar Excel</button>
+                <button class="secondary" onclick="verTodos()">Ver todos</button>
                 <button class="secondary" onclick="cargarUsuarios()">Actualizar</button>
                 <button class="danger" onclick="cerrarSesion()">Cerrar sesión</button>
             </div>
         </div>
 
         <h1>Administración de Usuarios</h1>
+
+        <div class="card">
+            <div class="titulo-seccion">
+                <h2>Resumen por departamento</h2>
+                <span class="contador" id="totalUsuarios">Total usuarios: 0</span>
+            </div>
+
+            <p>Haz clic en un departamento para ver únicamente los usuarios asignados.</p>
+
+            <div class="dept-grid" id="contenedorDepartamentos"></div>
+        </div>
 
         <div class="card">
             <h2>Crear usuario</h2>
@@ -183,7 +248,10 @@
         </div>
 
         <div class="card">
-            <h2>Usuarios registrados</h2>
+            <div class="titulo-seccion">
+                <h2 id="tituloTabla">Usuarios registrados</h2>
+                <span class="contador" id="contadorTabla">Mostrando: 0</span>
+            </div>
 
             <table>
                 <thead>
@@ -199,10 +267,31 @@
                 <tbody id="tablaUsuarios"></tbody>
             </table>
         </div>
+
     </div>
 
     <script>
         const API_URL = "/api";
+
+        const departamentos = [
+            "Ahuachapán",
+            "Cabañas",
+            "Chalatenango",
+            "Cuscatlán",
+            "La Libertad",
+            "La Paz",
+            "La Unión",
+            "Morazán",
+            "San Miguel",
+            "San Salvador",
+            "San Vicente",
+            "Santa Ana",
+            "Sonsonate",
+            "Usulutan"
+        ];
+
+        let usuariosGlobal = [];
+        let departamentoSeleccionado = "";
 
         document.addEventListener("DOMContentLoaded", () => {
             validarAdmin();
@@ -251,6 +340,120 @@
             }
         }
 
+        async function cargarUsuarios() {
+            const tabla = document.getElementById("tablaUsuarios");
+            tabla.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
+
+            try {
+                const response = await fetch(`${API_URL}/Usuarios/listar`);
+
+                if (!response.ok) {
+                    tabla.innerHTML = "<tr><td colspan='6'>Error al cargar usuarios</td></tr>";
+                    return;
+                }
+
+                usuariosGlobal = await response.json();
+
+                renderDepartamentos();
+                aplicarFiltroActual();
+
+            } catch (error) {
+                console.error(error);
+                tabla.innerHTML = "<tr><td colspan='6'>Error al conectar con la API</td></tr>";
+            }
+        }
+
+        function renderDepartamentos() {
+            const contenedor = document.getElementById("contenedorDepartamentos");
+            contenedor.innerHTML = "";
+
+            document.getElementById("totalUsuarios").textContent =
+                "Total usuarios: " + usuariosGlobal.length;
+
+            departamentos.forEach(dep => {
+                const cantidad = usuariosGlobal.filter(u =>
+                    normalizar(u.departamento) === normalizar(dep)
+                ).length;
+
+                const div = document.createElement("div");
+                div.className = "dept-card";
+
+                if (normalizar(departamentoSeleccionado) === normalizar(dep)) {
+                    div.classList.add("active");
+                }
+
+                div.onclick = () => filtrarDepartamento(dep);
+
+                div.innerHTML = `
+                    <h3>${dep}</h3>
+                    <p>${cantidad} usuario(s)</p>
+                `;
+
+                contenedor.appendChild(div);
+            });
+        }
+
+        function filtrarDepartamento(dep) {
+            departamentoSeleccionado = dep;
+            renderDepartamentos();
+            aplicarFiltroActual();
+        }
+
+        function verTodos() {
+            departamentoSeleccionado = "";
+            renderDepartamentos();
+            aplicarFiltroActual();
+        }
+
+        function aplicarFiltroActual() {
+            let lista = usuariosGlobal;
+
+            if (departamentoSeleccionado) {
+                lista = usuariosGlobal.filter(u =>
+                    normalizar(u.departamento) === normalizar(departamentoSeleccionado)
+                );
+
+                document.getElementById("tituloTabla").textContent =
+                    "Usuarios de " + departamentoSeleccionado;
+            } else {
+                document.getElementById("tituloTabla").textContent =
+                    "Usuarios registrados";
+            }
+
+            renderTablaUsuarios(lista);
+        }
+
+        function renderTablaUsuarios(usuarios) {
+            const tabla = document.getElementById("tablaUsuarios");
+            document.getElementById("contadorTabla").textContent =
+                "Mostrando: " + usuarios.length;
+
+            if (!usuarios.length) {
+                tabla.innerHTML = "<tr><td colspan='6'>No hay usuarios para mostrar</td></tr>";
+                return;
+            }
+
+            tabla.innerHTML = "";
+
+            usuarios.forEach(u => {
+                tabla.innerHTML += `
+                    <tr>
+                        <td>${u.id}</td>
+                        <td>${u.usuario}</td>
+                        <td>${u.rol}</td>
+                        <td>${u.departamento || ""}</td>
+                        <td>${u.distrito || ""}</td>
+                        <td>
+                            <button onclick="cambiarPassword(${u.id}, '${escapeHtml(u.usuario)}')">Cambiar contraseña</button>
+                            ${(u.rol || "").toLowerCase() !== "admin"
+                        ? `<button class="danger" onclick="eliminarUsuario(${u.id}, '${escapeHtml(u.usuario)}')">Eliminar</button>`
+                        : `Protegido`}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
         async function crearUsuario() {
             const usuario = document.getElementById("usuario").value.trim();
             const password = document.getElementById("password").value.trim();
@@ -269,13 +472,13 @@
             }
 
             if (rol === "departamental" && !departamento) {
-                mensaje.textContent = "Debes escribir el departamento.";
+                mensaje.textContent = "Debes seleccionar el departamento.";
                 mensaje.classList.add("error");
                 return;
             }
 
             if (rol === "distrital" && (!departamento || !distrito)) {
-                mensaje.textContent = "Debes escribir departamento y distrito.";
+                mensaje.textContent = "Debes seleccionar departamento y escribir distrito.";
                 mensaje.classList.add("error");
                 return;
             }
@@ -293,7 +496,7 @@
                     mensaje.textContent = data.mensaje || "Usuario creado correctamente.";
                     mensaje.classList.add("ok");
                     limpiarFormulario();
-                    cargarUsuarios();
+                    await cargarUsuarios();
                 } else {
                     mensaje.textContent = data.mensaje || "No se pudo crear el usuario.";
                     mensaje.classList.add("error");
@@ -302,51 +505,6 @@
                 console.error(error);
                 mensaje.textContent = "Error al conectar con la API.";
                 mensaje.classList.add("error");
-            }
-        }
-
-        async function cargarUsuarios() {
-            const tabla = document.getElementById("tablaUsuarios");
-            tabla.innerHTML = "<tr><td colspan='6'>Cargando...</td></tr>";
-
-            try {
-                const response = await fetch(`${API_URL}/Usuarios/listar`);
-
-                if (!response.ok) {
-                    tabla.innerHTML = "<tr><td colspan='6'>Error al cargar usuarios</td></tr>";
-                    return;
-                }
-
-                const usuarios = await response.json();
-
-                if (!usuarios.length) {
-                    tabla.innerHTML = "<tr><td colspan='6'>No hay usuarios registrados</td></tr>";
-                    return;
-                }
-
-                tabla.innerHTML = "";
-
-                usuarios.forEach(u => {
-                    tabla.innerHTML += `
-                <tr>
-                    <td>${u.id}</td>
-                    <td>${u.usuario}</td>
-                    <td>${u.rol}</td>
-                    <td>${u.departamento || ""}</td>
-                    <td>${u.distrito || ""}</td>
-                    <td>
-                        <button onclick="cambiarPassword(${u.id}, '${u.usuario}')">Cambiar contraseña</button>
-                        ${(u.rol || "").toLowerCase() !== "admin"
-                            ? `<button class="danger" onclick="eliminarUsuario(${u.id}, '${u.usuario}')">Eliminar</button>`
-                            : `Protegido`}
-                    </td>
-                </tr>
-            `;
-                });
-
-            } catch (error) {
-                console.error(error);
-                tabla.innerHTML = "<tr><td colspan='6'>Error al conectar con la API</td></tr>";
             }
         }
 
@@ -369,7 +527,7 @@
 
                 if (response.ok) {
                     alert(data.mensaje || "Usuario eliminado");
-                    cargarUsuarios();
+                    await cargarUsuarios();
                 } else {
                     alert(data.mensaje || "No se pudo eliminar");
                 }
@@ -430,6 +588,22 @@
 
         function abrirDashboard() {
             window.location.href = "dashboard.html";
+        }
+
+        function normalizar(texto) {
+            return (texto || "")
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function escapeHtml(texto) {
+            return (texto || "")
+                .toString()
+                .replace(/'/g, "\\'")
+                .replace(/"/g, "&quot;");
         }
     </script>
 
