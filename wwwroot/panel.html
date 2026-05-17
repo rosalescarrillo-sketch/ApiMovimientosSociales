@@ -420,9 +420,13 @@
             }
             else if ((sesion.rol || "").toLowerCase() === "distrital") {
                 dep.value = sesion.departamento || "";
+
+                dis.innerHTML = `<option value="${sesion.distrito || ""}">${sesion.distrito || ""}</option>`;
                 dis.value = sesion.distrito || "";
+
                 dep.readOnly = true;
-                dis.readOnly = true;
+                dis.disabled = true;
+
                 dep.classList.add("readonly");
                 dis.classList.add("readonly");
             }
@@ -616,12 +620,6 @@
             mensaje.textContent = "";
             mensaje.className = "msg";
 
-            if (!data.nombres || !data.apellidos || !data.dui || !data.departamento || !data.distrito) {
-                mensaje.textContent = "Completa nombres, apellidos, DUI, departamento y distrito.";
-                mensaje.classList.add("error");
-                return;
-            }
-
             if ((sesion.rol || "").toLowerCase() === "departamental") {
                 data.departamento = sesion.departamento || "";
             }
@@ -629,6 +627,12 @@
             if ((sesion.rol || "").toLowerCase() === "distrital") {
                 data.departamento = sesion.departamento || "";
                 data.distrito = sesion.distrito || "";
+            }
+
+            if (!data.nombres || !data.apellidos || !data.dui || !data.departamento || !data.distrito) {
+                mensaje.textContent = "Completa nombres, apellidos, DUI, departamento y distrito.";
+                mensaje.classList.add("error");
+                return;
             }
 
             try {
