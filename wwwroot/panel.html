@@ -25,14 +25,6 @@
             margin: 0 auto;
         }
 
-        .card {
-            background: #fff;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-        }
-
         .topbar {
             display: flex;
             justify-content: space-between;
@@ -48,11 +40,84 @@
             font-weight: bold;
         }
 
+        .card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
             gap: 12px;
         }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .kpi {
+            background: linear-gradient(135deg,#4facfe,#00c6ff);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+            .kpi h3 {
+                margin: 0;
+                font-size: 30px;
+            }
+
+            .kpi p {
+                margin: 8px 0 0;
+                font-weight: bold;
+            }
+
+        .district-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .district-card {
+            background: #f7f9fc;
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            .district-card:hover {
+                transform: translateY(-3px);
+                border-color: #4facfe;
+                box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            }
+
+            .district-card.active {
+                background: #e9f3ff;
+                border-color: #2d7dfc;
+            }
+
+            .district-card h3 {
+                margin: 0;
+                color: #333;
+            }
+
+            .district-card p {
+                margin: 8px 0 0;
+                color: #2d7dfc;
+                font-weight: bold;
+            }
 
         input {
             width: 100%;
@@ -71,6 +136,7 @@
             cursor: pointer;
             background: #4facfe;
             color: white;
+            margin: 2px;
         }
 
             button:hover {
@@ -127,6 +193,23 @@
         .readonly {
             background: #f1f1f1;
         }
+
+        .titulo-seccion {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .contador {
+            color: #2d7dfc;
+            font-weight: bold;
+        }
+
+        .oculto {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -135,6 +218,7 @@
         <div class="topbar">
             <div class="info" id="infoUsuario">Cargando...</div>
             <div>
+                <button class="secondary" onclick="verTodosDistritos()" id="btnVerTodos">Ver todos</button>
                 <button class="secondary" onclick="cargarRegistros()">Actualizar</button>
                 <button class="danger" onclick="cerrarSesion()">Cerrar sesión</button>
             </div>
@@ -142,7 +226,44 @@
 
         <h1>Red de Apoyo Movimientos Sociales</h1>
 
-        <div class="card">
+        <div class="card" id="dashboardDepartamental">
+            <div class="titulo-seccion">
+                <h2 id="tituloDashboard">Dashboard departamental</h2>
+                <span class="contador" id="contadorDepartamento">Departamento</span>
+            </div>
+
+            <div class="kpi-grid">
+                <div class="kpi">
+                    <h3 id="totalRegistros">0</h3>
+                    <p>Total registros</p>
+                </div>
+                <div class="kpi">
+                    <h3 id="totalDistritos">0</h3>
+                    <p>Distritos activos</p>
+                </div>
+                <div class="kpi">
+                    <h3 id="totalComunidades">0</h3>
+                    <p>Comunidades</p>
+                </div>
+                <div class="kpi">
+                    <h3 id="totalLideres">0</h3>
+                    <p>Personas registradas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="cardDistritos">
+            <div class="titulo-seccion">
+                <h2>Distritos del departamento</h2>
+                <span class="contador" id="contadorDistritos">0 distritos</span>
+            </div>
+
+            <p>Haz clic en un distrito para ver únicamente sus registros.</p>
+
+            <div class="district-grid" id="contenedorDistritos"></div>
+        </div>
+
+        <div class="card" id="formularioCard">
             <h2 id="tituloFormulario">Agregar persona</h2>
 
             <div class="grid">
@@ -167,7 +288,10 @@
         </div>
 
         <div class="card">
-            <h2>Listado</h2>
+            <div class="titulo-seccion">
+                <h2 id="tituloListado">Listado</h2>
+                <span class="contador" id="contadorListado">Mostrando: 0</span>
+            </div>
 
             <table>
                 <thead>
@@ -192,9 +316,12 @@
     <script>
         const API_URL = "/api";
         let sesion = null;
+        let registrosGlobal = [];
+        let distritoSeleccionado = "";
 
         document.addEventListener("DOMContentLoaded", () => {
             validarSesion();
+            prepararVistaPorRol();
             fijarUbicacion();
             cargarRegistros();
         });
@@ -212,6 +339,22 @@
                 `Usuario: ${sesion.usuario} | Rol: ${sesion.rol} | Departamento: ${sesion.departamento || "-"} | Distrito: ${sesion.distrito || "-"}`;
         }
 
+        function prepararVistaPorRol() {
+            const rol = (sesion.rol || "").toLowerCase();
+
+            if (rol === "departamental") {
+                document.getElementById("dashboardDepartamental").classList.remove("oculto");
+                document.getElementById("cardDistritos").classList.remove("oculto");
+                document.getElementById("btnVerTodos").classList.remove("oculto");
+                document.getElementById("formularioCard").classList.add("oculto");
+            } else {
+                document.getElementById("dashboardDepartamental").classList.add("oculto");
+                document.getElementById("cardDistritos").classList.add("oculto");
+                document.getElementById("btnVerTodos").classList.add("oculto");
+                document.getElementById("formularioCard").classList.remove("oculto");
+            }
+        }
+
         function fijarUbicacion() {
             const dep = document.getElementById("departamento");
             const dis = document.getElementById("distrito");
@@ -225,7 +368,7 @@
                 dep.value = sesion.departamento || "";
                 dep.readOnly = true;
                 dep.classList.add("readonly");
-                dis.value = "";
+                dis.value = distritoSeleccionado || "";
             }
             else if ((sesion.rol || "").toLowerCase() === "distrital") {
                 dep.value = sesion.departamento || "";
@@ -258,22 +401,133 @@
                     return;
                 }
 
-                const data = await response.json();
+                registrosGlobal = await response.json();
 
-                if (!data.length) {
-                    tabla.innerHTML = "<tr><td colspan='10'>No hay registros</td></tr>";
-                    return;
+                if ((sesion.rol || "").toLowerCase() === "departamental") {
+                    renderDashboardDepartamental();
+                    renderDistritos();
+                    aplicarFiltroDistrito();
+                } else {
+                    renderTablaRegistros(registrosGlobal);
                 }
 
-                tabla.innerHTML = "";
+            } catch (error) {
+                console.error(error);
+                tabla.innerHTML = "<tr><td colspan='10'>Error al conectar con la API</td></tr>";
+            }
+        }
 
-                data.forEach(r => {
-                    tabla.innerHTML += `
+        function renderDashboardDepartamental() {
+            const departamento = sesion.departamento || "";
+
+            document.getElementById("tituloDashboard").textContent =
+                "Dashboard de " + departamento;
+
+            document.getElementById("contadorDepartamento").textContent =
+                "Departamento: " + departamento;
+
+            const distritos = obtenerUnicos(registrosGlobal.map(r => r.distrito));
+            const comunidades = obtenerUnicos(registrosGlobal.map(r => r.comunidad));
+
+            document.getElementById("totalRegistros").textContent = registrosGlobal.length;
+            document.getElementById("totalDistritos").textContent = distritos.length;
+            document.getElementById("totalComunidades").textContent = comunidades.length;
+            document.getElementById("totalLideres").textContent = registrosGlobal.length;
+        }
+
+        function renderDistritos() {
+            const contenedor = document.getElementById("contenedorDistritos");
+            contenedor.innerHTML = "";
+
+            const distritos = obtenerUnicos(registrosGlobal.map(r => r.distrito));
+
+            document.getElementById("contadorDistritos").textContent =
+                distritos.length + " distritos";
+
+            if (!distritos.length) {
+                contenedor.innerHTML = "<p>No hay distritos con registros todavía.</p>";
+                return;
+            }
+
+            distritos.forEach(dis => {
+                const cantidad = registrosGlobal.filter(r =>
+                    normalizar(r.distrito) === normalizar(dis)
+                ).length;
+
+                const div = document.createElement("div");
+                div.className = "district-card";
+
+                if (normalizar(distritoSeleccionado) === normalizar(dis)) {
+                    div.classList.add("active");
+                }
+
+                div.addEventListener("click", function () {
+                    seleccionarDistrito(dis);
+                });
+
+                div.innerHTML = `
+                    <h3>${dis}</h3>
+                    <p>${cantidad} registro(s)</p>
+                `;
+
+                contenedor.appendChild(div);
+            });
+        }
+
+        function seleccionarDistrito(dis) {
+            distritoSeleccionado = dis;
+            renderDistritos();
+            aplicarFiltroDistrito();
+
+            document.getElementById("tituloListado").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        }
+
+        function verTodosDistritos() {
+            distritoSeleccionado = "";
+            renderDistritos();
+            aplicarFiltroDistrito();
+        }
+
+        function aplicarFiltroDistrito() {
+            let lista = registrosGlobal;
+
+            if (distritoSeleccionado) {
+                lista = registrosGlobal.filter(r =>
+                    normalizar(r.distrito) === normalizar(distritoSeleccionado)
+                );
+
+                document.getElementById("tituloListado").textContent =
+                    "Registros de " + distritoSeleccionado;
+            } else {
+                document.getElementById("tituloListado").textContent =
+                    "Registros de " + (sesion.departamento || "departamento");
+            }
+
+            renderTablaRegistros(lista);
+        }
+
+        function renderTablaRegistros(data) {
+            const tabla = document.getElementById("tablaRegistros");
+            document.getElementById("contadorListado").textContent =
+                "Mostrando: " + data.length;
+
+            if (!data.length) {
+                tabla.innerHTML = "<tr><td colspan='10'>No hay registros</td></tr>";
+                return;
+            }
+
+            tabla.innerHTML = "";
+
+            data.forEach(r => {
+                tabla.innerHTML += `
                     <tr>
                         <td>${r.id}</td>
-                        <td>${r.nombres}</td>
-                        <td>${r.apellidos}</td>
-                        <td>${r.dui}</td>
+                        <td>${r.nombres || ""}</td>
+                        <td>${r.apellidos || ""}</td>
+                        <td>${r.dui || ""}</td>
                         <td>${r.telefono || ""}</td>
                         <td>${r.cargo || ""}</td>
                         <td>${r.comunidad || ""}</td>
@@ -285,12 +539,7 @@
                         </td>
                     </tr>
                 `;
-                });
-
-            } catch (error) {
-                console.error(error);
-                tabla.innerHTML = "<tr><td colspan='10'>Error al conectar con la API</td></tr>";
-            }
+            });
         }
 
         async function guardarRegistro() {
@@ -363,6 +612,8 @@
         }
 
         function editarRegistro(r) {
+            document.getElementById("formularioCard").classList.remove("oculto");
+
             document.getElementById("registroId").value = r.id || "";
             document.getElementById("nombres").value = r.nombres || "";
             document.getElementById("apellidos").value = r.apellidos || "";
@@ -385,6 +636,11 @@
             }
 
             fijarUbicacion();
+
+            document.getElementById("formularioCard").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         }
 
         async function eliminarRegistro(id) {
@@ -425,11 +681,37 @@
             } else {
                 fijarUbicacion();
             }
+
+            if ((sesion.rol || "").toLowerCase() === "departamental") {
+                document.getElementById("formularioCard").classList.add("oculto");
+            }
         }
 
         function cerrarSesion() {
             localStorage.removeItem("usuario");
             window.location.href = "index.html";
+        }
+
+        function obtenerUnicos(lista) {
+            const mapa = {};
+
+            lista.forEach(item => {
+                const valor = (item || "").toString().trim();
+                if (valor) {
+                    mapa[normalizar(valor)] = valor;
+                }
+            });
+
+            return Object.values(mapa).sort((a, b) => a.localeCompare(b));
+        }
+
+        function normalizar(texto) {
+            return (texto || "")
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
         }
     </script>
 
