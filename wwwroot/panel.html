@@ -277,7 +277,9 @@
                 <input type="text" id="cargo" placeholder="Cargo">
                 <input type="text" id="comunidad" placeholder="Comunidad">
                 <input type="text" id="departamento" placeholder="Departamento">
-                <input type="text" id="distrito" placeholder="Distrito">
+                <select id="distrito">
+                    <option value="">Seleccione distrito</option>
+                </select>
             </div>
 
             <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -319,10 +321,12 @@
         let sesion = null;
         let registrosGlobal = [];
         let distritoSeleccionado = "";
+        let distritosDisponibles = [];
 
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             validarSesion();
             prepararVistaPorRol();
+            await cargarDistritosDisponibles();
             fijarUbicacion();
             cargarRegistros();
         });
@@ -356,6 +360,49 @@
             }
         }
 
+        async function cargarDistritosDisponibles() {
+            const rol = (sesion.rol || "").toLowerCase();
+
+            if (rol !== "departamental") {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/Usuarios/listar`);
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const usuarios = await response.json();
+
+                distritosDisponibles = usuarios
+                    .filter(u =>
+                        (u.rol || "").toLowerCase() === "distrital" &&
+                        normalizar(u.departamento) === normalizar(sesion.departamento)
+                    )
+                    .map(u => u.distrito)
+                    .filter(d => d && d.trim() !== "");
+
+                distritosDisponibles = [...new Set(distritosDisponibles)]
+                    .sort((a, b) => a.localeCompare(b));
+
+                llenarSelectDistritos();
+
+            } catch (error) {
+                console.error("Error cargando distritos disponibles", error);
+            }
+        }
+
+        function llenarSelectDistritos() {
+            const select = document.getElementById("distrito");
+
+            select.innerHTML = `<option value="">Seleccione distrito</option>`;
+
+            distritosDisponibles.forEach(d => {
+                select.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+        }
         function fijarUbicacion() {
             const dep = document.getElementById("departamento");
             const dis = document.getElementById("distrito");
