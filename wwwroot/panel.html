@@ -218,6 +218,7 @@
         <div class="topbar">
             <div class="info" id="infoUsuario">Cargando...</div>
             <div>
+                <button class="secondary" onclick="mostrarFormulario()">+ Nuevo registro</button>
                 <button class="secondary" onclick="verTodosDistritos()" id="btnVerTodos">Ver todos</button>
                 <button class="secondary" onclick="cargarRegistros()">Actualizar</button>
                 <button class="danger" onclick="cerrarSesion()">Cerrar sesión</button>
@@ -507,6 +508,14 @@
             }
 
             renderTablaRegistros(lista);
+        }
+
+        function mostrarFormulario() {
+            document.getElementById("formularioCard").classList.remove("oculto");
+            document.getElementById("formularioCard").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         }
 
         function renderTablaRegistros(data) {
